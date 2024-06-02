@@ -31,6 +31,17 @@ async function run() {
 
         const userCollection = client.db('snapGigDB').collection('users')
 
+        app.get('/users', async (req, res) => {
+            const result = await userCollection.find().toArray()
+            res.send(result)
+        })
+        app.get('/users/:email', async (req, res) => {
+            const email = req.params.email
+            const query = { email: email }
+            const result = await userCollection.findOne(query)
+            res.send(result)
+        })
+
         app.post('/users', async (req, res) => {
             const data = req.body
             const query = { email: data.email }
@@ -59,9 +70,9 @@ async function run() {
         // JWT related APIs
 
         app.post('/jwt', async (req, res) => {
-            const email  = req.body
+            const email = req.body
             const token = jwt.sign(email, process.env.TOKEN_SECRET, { expiresIn: '8d' })
-            res.send({token})
+            res.send({ token })
         })
 
 
