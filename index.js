@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion } = require('mongodb');
 const port = process.env.PORT || 5000;
 const app = express()
@@ -55,6 +56,13 @@ async function run() {
 
 
 
+        // JWT related APIs
+
+        app.post('/jwt', async (req, res) => {
+            const email  = req.body
+            const token = jwt.sign(email, process.env.TOKEN_SECRET, { expiresIn: '8d' })
+            res.send({token})
+        })
 
 
         // Send a ping to confirm a successful connection
