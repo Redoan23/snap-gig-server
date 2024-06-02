@@ -28,7 +28,30 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        
+        const userCollection = client.db('snapGigDB').collection('users')
+
+        app.post('/users', async (req, res) => {
+            const data = req.body
+            const query = { email: data.email }
+            const role = data.role
+            let coin = 0
+            if (role === 'worker') {
+                coin = 10
+            }
+            if (role === 'taskcreator') {
+                coin = 50
+            }
+            data.coin = coin
+
+            const checkAccount = await userCollection.findOne(query)
+
+            if (!checkAccount) {
+                const result = await userCollection.insertOne(data)
+                res.send(result)
+            }
+            res.status(409).send({ message: 'An account already exists with this email' })
+
+        })
 
 
 
