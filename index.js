@@ -2,13 +2,17 @@ require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 const app = express()
 
 
 app.use(express.json())
-app.use(cors())
+app.use(cors({
+    credentials: [
+        'http://localhost:5173'
+    ]
+}))
 
 
 
@@ -36,12 +40,35 @@ async function run() {
 
         app.get('/taskCreatorTasks/:email', async (req, res) => {
             const email = req.params.email
-            const result = await taskCollection.find(email).toArray()
+            const query = { creatorEmail: email }
+            const result = await taskCollection.find(query).toArray()
             res.send(result)
         })
         app.post('/tasks', async (req, res) => {
             const data = req.body
             const result = await taskCollection.insertOne(data)
+            res.send(result)
+        })
+        app.delete('/tasks/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const findUserTask = await taskCollection.findOne(query)
+            const userEmail = findUserTask?.creatorEmail
+            const userQuery = { email: userEmail }
+            const user = await userCollection.findOne(userQuery)
+            const addCoin = findUserTask.totalPayment
+            const oldCoin = user.coin
+            const newCoin = oldCoin + addCoin
+            const updatedDoc = {
+                $set: {
+                    coin: newCoin
+                }
+            }
+            const updateCoin = await userCollection.updateOne(userQuery, updatedDoc)
+            if (!updateCoin) {
+                return res.send({ message: "couldn't delete the task, failed" })
+            }
+            const result = await taskCollection.deleteOne(query)
             res.send(result)
         })
 
