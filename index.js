@@ -30,6 +30,23 @@ async function run() {
         await client.connect();
 
         const userCollection = client.db('snapGigDB').collection('users')
+        const taskCollection = client.db('snapGigDB').collection('tasks')
+
+        // task related apis
+
+        app.get('/taskCreatorTasks/:email', async (req, res) => {
+            const email = req.params.email
+            const result = await taskCollection.find(email).toArray()
+            res.send(result)
+        })
+        app.post('/tasks', async (req, res) => {
+            const data = req.body
+            const result = await taskCollection.insertOne(data)
+            res.send(result)
+        })
+
+
+        // user related apis
 
         app.get('/users', async (req, res) => {
             const result = await userCollection.find().toArray()
@@ -41,6 +58,23 @@ async function run() {
             const result = await userCollection.findOne(query)
             res.send(result)
         })
+        app.patch('/users/:email', async (req, res) => {
+            const email = req.params.email
+            const data = req.body
+            const cost = data.totalPayment
+            const query = { email: email }
+            const userId = await userCollection.findOne(query)
+
+            const newCoin = userId.coin - data.totalPayment
+            const updatedDoc = {
+                $set: {
+                    coin: newCoin
+                }
+            }
+            const result = userCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
+
 
         app.post('/users', async (req, res) => {
             const data = req.body
