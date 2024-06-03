@@ -36,6 +36,7 @@ async function run() {
 
         const userCollection = client.db('snapGigDB').collection('users')
         const taskCollection = client.db('snapGigDB').collection('tasks')
+        const paymentCollection = client.db('snapGigDB').collection('payments')
 
         // task related apis
 
@@ -204,8 +205,15 @@ async function run() {
             }
             const result = await userCollection.updateOne(query, updatedDoc)
             result.coinMessage = showCoin
-            // res.send({ result, message: showCoin })
+            const savePaymentHistory = await paymentCollection.insertOne(data)
             res.send(result)
+        })
+
+        app.get('/payment/:email', async (req, res) => {
+            const email = req.params.email
+            const query = { email: email }
+            const findUserData = await paymentCollection.find(query).toArray()
+            res.send(findUserData)
         })
 
         // Send a ping to confirm a successful connection
