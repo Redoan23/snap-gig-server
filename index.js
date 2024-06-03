@@ -1,6 +1,7 @@
 require('dotenv').config()
 const express = require('express')
 const cors = require('cors')
+const stripe = require("stripe")(process.env.STRIPE_PAYMENT_SECRET);
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
@@ -47,6 +48,21 @@ async function run() {
         app.post('/tasks', async (req, res) => {
             const data = req.body
             const result = await taskCollection.insertOne(data)
+            res.send(result)
+        })
+        app.patch('/task/:id', async (req, res) => {
+            const data = req.body
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    taskTitle: data?.taskTitle,
+                    taskDetails: data?.taskDetails,
+                    submissionInfo: data?.submissionInfo
+                }
+            }
+            console.log(data)
+            const result = await taskCollection.updateOne(query, updatedDoc)
             res.send(result)
         })
         app.delete('/tasks/:id', async (req, res) => {
@@ -136,6 +152,61 @@ async function run() {
             res.send({ token })
         })
 
+        // stripe related api
+
+
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body
+            const amount = parseInt(price * 100)
+            console.log(amount, 'the total price to be paid by customer')
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ["card"]
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+        app.post('/payments', async (req, res) => {
+            const data = req.body
+            const amount = data?.price
+            const email = data?.email
+            const query = { email: email }
+            const user = await userCollection.findOne(query)
+            const userCoin = user?.coin
+            let newCoin = 0
+            let showCoin = 0
+            if (amount === 1) {
+                newCoin = userCoin + 10
+                showCoin = 10
+            }
+            if (amount === 9) {
+                newCoin = userCoin + 100
+                showCoin = 100
+            }
+            if (amount === 19) {
+                newCoin = userCoin + 500
+                showCoin = 500
+            }
+            if (amount === 39) {
+                newCoin = userCoin + 1000
+                showCoin = 1000
+            }
+            const updatedDoc = {
+                $set: {
+                    coin: newCoin
+                }
+            }
+            if (newCoin === 0) {
+                return res.send(`no changes occurs`)
+            }
+            const result = await userCollection.updateOne(query, updatedDoc)
+            result.coinMessage = showCoin
+            // res.send({ result, message: showCoin })
+            res.send(result)
+        })
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
