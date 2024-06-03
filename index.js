@@ -132,7 +132,6 @@ async function run() {
                 coin = 50
             }
             data.coin = coin
-
             const checkAccount = await userCollection.findOne(query)
 
             if (!checkAccount) {
@@ -143,6 +142,8 @@ async function run() {
 
         })
 
+        // user/worker related api
+
         app.delete('/worker/:id', async (req, res) => {
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
@@ -150,6 +151,18 @@ async function run() {
             res.send(removedUser)
         })
 
+        app.patch('/worker/:id', async (req, res) => {
+            const data = req.body
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const updatedDoc = {
+                $set: {
+                    role: data.role
+                }
+            }
+            const result = await userCollection.updateOne(query, updatedDoc)
+            res.send(result)
+        })
 
         // JWT related APIs
 
