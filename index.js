@@ -37,9 +37,28 @@ async function run() {
         const userCollection = client.db('snapGigDB').collection('users')
         const taskCollection = client.db('snapGigDB').collection('tasks')
         const paymentCollection = client.db('snapGigDB').collection('payments')
+        const submissionCollection = client.db('snapGigDB').collection('submissions')
+
+        // submission related api
+
+        app.post('/submittedData', async (req, res) => {
+            const data = req.body
+            const result = await submissionCollection.insertOne(data)
+            res.send(result)
+        })
 
         // task related apis
 
+        app.get('/tasks/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await taskCollection.findOne(query)
+            res.send(result)
+        })
+        app.get('/tasks', async (req, res) => {
+            const result = await taskCollection.find().toArray()
+            res.send(result)
+        })
         app.get('/taskCreatorTasks/:email', async (req, res) => {
             const email = req.params.email
             const query = { creatorEmail: email }
@@ -62,7 +81,6 @@ async function run() {
                     submissionInfo: data?.submissionInfo
                 }
             }
-            console.log(data)
             const result = await taskCollection.updateOne(query, updatedDoc)
             res.send(result)
         })
@@ -89,6 +107,12 @@ async function run() {
             res.send(result)
         })
 
+        app.delete('/taskCollection/tasks/:id', async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await taskCollection.deleteOne(query)
+            res.send(result)
+        })
 
         // user related apis
 
@@ -142,7 +166,7 @@ async function run() {
 
         })
 
-        // user/worker related api
+        // user/worker+ admin control related api
 
         app.delete('/worker/:id', async (req, res) => {
             const id = req.params.id
@@ -164,6 +188,19 @@ async function run() {
             res.send(result)
         })
 
+
+        // worker related api
+
+
+        app.get('/worker/tasks/available', async (req, res) => {
+            const filteredTasks = await taskCollection.find({ taskQuantity: { $gt: 0 } }).toArray()
+            res.send(filteredTasks)
+        })
+
+
+
+
+
         // JWT related APIs
 
         app.post('/jwt', async (req, res) => {
@@ -178,7 +215,6 @@ async function run() {
         app.post('/create-payment-intent', async (req, res) => {
             const { price } = req.body
             const amount = parseInt(price * 100)
-            console.log(amount, 'the total price to be paid by customer')
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount,
                 currency: 'usd',
