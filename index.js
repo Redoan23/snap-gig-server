@@ -38,6 +38,30 @@ async function run() {
         const taskCollection = client.db('snapGigDB').collection('tasks')
         const paymentCollection = client.db('snapGigDB').collection('payments')
         const submissionCollection = client.db('snapGigDB').collection('submissions')
+        const withdrawCollection = client.db('snapGigDB').collection('withdraws')
+
+        // withdraw related api
+
+        app.post('/withdraw', async (req, res) => {
+            const data = req.body
+            const status = 'pending'
+            data.status = status
+            // const email = data.workerEmail
+            // const query = { email: email }
+            // const user = await userCollection.findOne(query)
+            // const currentCoin = data.withdrawCoin
+            // const oldCoin = user.coin
+            // const newCoin = oldCoin - currentCoin
+            // const updatedDoc = {
+            //     $set: {
+            //         coin: newCoin
+            //     }
+            // }
+            // const updateUserCoin = await userCollection.updateOne(query, updatedDoc)
+            const result = await withdrawCollection.insertOne(data)
+            res.send(result)
+        })
+
 
         // submission related api
 
@@ -47,7 +71,61 @@ async function run() {
             res.send(result)
         })
 
-        // task related apis
+        // task creator related apis
+
+        app.get('/workerData/:email', async (req, res) => {
+            const taskCreatorEmail = req.params.email
+            const status = 'pending'
+            const query = {
+                $and: [
+                    { creatorEmail: taskCreatorEmail },
+                    { status: status }
+                ]
+            }
+            const result = await submissionCollection.find(query).toArray()
+            res.send(result)
+        })
+        app.get('/workerData/totalPayment/:email', async (req, res) => {
+            const taskCreatorEmail = req.params.email
+            const status = 'approved'
+            const query = {
+                $and: [
+                    { creatorEmail: taskCreatorEmail },
+                    { status: status }
+                ]
+            }
+            const result = await submissionCollection.find(query).toArray()
+            res.send(result)
+        })
+
+        app.patch('/submittedTask/:id', async (req, res) => {
+            const id = req.params.id
+            const data = req.body
+            const payableAmount = data.payableAmount
+            const workerEmail = data.workerEmail
+            const status = data.status
+            const query = { _id: new ObjectId(id) }
+            const query2 = { email: workerEmail }
+            const worker = await userCollection.findOne(query2)
+            const workerCoin = worker.coin
+            const updatedDoc = {
+                $set: {
+                    status: status
+                }
+            }
+            if (status === 'approved') {
+                const updatedCoin = {
+                    $set: {
+                        coin: payableAmount + workerCoin
+                    }
+                }
+                const updateUserCoin = await userCollection.updateOne(query2, updatedCoin)
+            }
+
+            const finalResult = await submissionCollection.updateOne(query, updatedDoc)
+            res.send(finalResult)
+
+        })
 
         app.get('/tasks/:id', async (req, res) => {
             const id = req.params.id
