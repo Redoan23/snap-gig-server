@@ -46,18 +46,6 @@ async function run() {
             const data = req.body
             const status = 'pending'
             data.status = status
-            // const email = data.workerEmail
-            // const query = { email: email }
-            // const user = await userCollection.findOne(query)
-            // const currentCoin = data.withdrawCoin
-            // const oldCoin = user.coin
-            // const newCoin = oldCoin - currentCoin
-            // const updatedDoc = {
-            //     $set: {
-            //         coin: newCoin
-            //     }
-            // }
-            // const updateUserCoin = await userCollection.updateOne(query, updatedDoc)
             const result = await withdrawCollection.insertOne(data)
             res.send(result)
         })
@@ -266,6 +254,33 @@ async function run() {
             res.send(result)
         })
 
+        app.get('/allPayments', async (req, res) => {
+            const result = await paymentCollection.find().toArray()
+            res.send(result)
+        })
+        app.get('/allWithdrawals', async (req, res) => {
+            const result = await withdrawCollection.find().toArray()
+            res.send(result)
+        })
+        app.patch('/withdrawal/delete/:id', async (req, res) => {
+            const data = req.body
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const email = data.workerEmail
+            const userQuery = { email: email }
+            const user = await userCollection.findOne(userQuery)
+            const currentCoin = data.deductCoin
+            const oldCoin = user.coin
+            const newCoin = oldCoin - currentCoin
+            const updatedDoc = {
+                $set: {
+                    coin: newCoin
+                }
+            }
+            const result = await withdrawCollection.deleteOne(query)
+            const updateUserCoin = await userCollection.updateOne(userQuery, updatedDoc)
+            res.send(updateUserCoin)
+        })
 
         // worker related api
 
