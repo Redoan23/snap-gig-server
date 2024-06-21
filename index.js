@@ -1,9 +1,9 @@
-require('dotenv').config()
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const cors = require('cors')
+require('dotenv').config()
 const stripe = require("stripe")(process.env.STRIPE_PAYMENT_SECRET);
 const jwt = require('jsonwebtoken')
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 const app = express()
 
@@ -15,10 +15,8 @@ app.use(cors({
     ]
 }))
 
-
-
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.qlopamb.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -40,7 +38,30 @@ async function run() {
         const submissionCollection = client.db('snapGigDB').collection('submissions')
         const withdrawCollection = client.db('snapGigDB').collection('withdraws')
 
+        
+        const verifyToken = async (req, res, next) => {
+
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: 'access denied' })
+            }
+
+            const token = req.headers.authorization.split(' ')[1]
+            jwt.verify(token, process.env.TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(403).send({ message: 'unauthorized access' })
+                }
+                req.decoded = decoded
+                next()
+            })
+        }
+
+
         // withdraw related api
+
+
+
+
+
 
         app.post('/withdraw', async (req, res) => {
             const data = req.body
@@ -289,8 +310,23 @@ async function run() {
             const filteredTasks = await taskCollection.find({ taskQuantity: { $gt: 0 } }).toArray()
             res.send(filteredTasks)
         })
-
-
+        app.get('/totalSubmission/:email', async (req, res) => {
+            const email = req.params.email
+            const query = { workerEmail: email }
+            const result = await submissionCollection.find(query).toArray()
+            res.send(result)
+        })
+        app.get('/totalEarning/:email', async (req, res) => {
+            const email = req.params.email
+            const query = {
+                $and: [
+                    { workerEmail: email },
+                    { status: 'approved' }
+                ]
+            }
+            const result = await submissionCollection.find(query).toArray()
+            res.send(result)
+        })
 
 
 
@@ -364,6 +400,14 @@ async function run() {
             res.send(findUserData)
         })
 
+
+        // home section user related api
+
+        app.get('/topEarners', async (req, res) => {
+            const result = await userCollection.find({ role: 'worker' }).sort({ coin: -1 }).limit(6).toArray()
+            res.send(result)
+        })
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -373,8 +417,6 @@ async function run() {
     }
 }
 run().catch(console.dir);
-
-
 
 
 app.get('/', async (req, res) => {
